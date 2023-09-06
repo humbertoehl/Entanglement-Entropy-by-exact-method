@@ -445,7 +445,7 @@ def write_results_txt(filename, ratio, nvariance, nvariance2, n1, n2, f, S_ent, 
                 ratio[i], nvariance[i], nvariance2[i], n1[i], n2[i], f[i], S_ent[i], S_ent2[i], O_DW[i])
             file.write(row)
 
-    print("Data has been written to {}.txt".format(filename))
+    print("\n Data has been written to {}.txt".format(filename))
 
 def calculate_entropy_V2(GS, M, N, A, D, S_ent, S_ent2, diccionario, diccionario2, index_mapping_1, index_mapping_2):
 

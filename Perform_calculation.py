@@ -4,7 +4,7 @@ from Exact_diag_functions import create_hamiltonian, calculate_expected_values, 
 import time
 
 def main():
-    print("Exact Diagonalization\n")
+    print("Entaglement Entropy of extended Bose-Hubbard model via exact diagonalization\n")
     start_time = time.time()
 
     # expected values arrays
@@ -18,9 +18,29 @@ def main():
     S_ent2 = []
 
     #system configuration
-    N = 8
-    M = 8
-    CAVITY = False
+
+    while True:
+        N = input("Input number of particles N [4/6/8]: ")
+        if N in ["4", "6", "8"]:
+            N = int(N)
+            break
+
+    while True:
+        M = input("Input number of lattice sites M [4/6/8]: ")
+        if M in ["4", "6", "8"]:
+            M = int(M)
+            break
+
+    while True:
+        extended_model = input("Extended Bose-Hubbard (include cavity part)?  [y/n]: ").lower()
+        if extended_model == "y":
+            CAVITY = True
+            break
+        elif extended_model == "n":
+            CAVITY = False
+            break
+
+
 
     # constants
     BASIS_DIM = int(ma.factorial(N + M - 1) / (ma.factorial(N) * ma.factorial(M - 1)))
