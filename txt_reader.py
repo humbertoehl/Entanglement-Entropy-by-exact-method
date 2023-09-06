@@ -18,20 +18,20 @@ def plot_txt_data(file_path):
 
     # Plot the data
     plt.figure(figsize=(10, 6))
-    plt.semilogx(ratio, n_variance, label='N_Variance')
-    plt.semilogx(ratio, n_variance2, label='N_Variance2')
-    plt.semilogx(ratio, n1, label='N1')
-    plt.semilogx(ratio, n2, label='N2')
-    plt.semilogx(ratio, f, label='F')
-    plt.semilogx(ratio, s_ent, label='S_Ent')
-    plt.semilogx(ratio, s_ent2, label='S_Ent2')
+    plt.semilogx(ratio, n_variance, label='$\Delta n_1$')
+    plt.semilogx(ratio, n_variance2, label='$\Delta n_2$')
+    plt.semilogx(ratio, n1, label='$<n_1>$')
+    plt.semilogx(ratio, n2, label='$<n_2>$')
+    plt.semilogx(ratio, f, label='$f_c$')
+    plt.semilogx(ratio, s_ent, label='$S_{ent}$ trazado sobre impares')
+    plt.semilogx(ratio, s_ent2, label='$S_{ent}$ trazado sobre primera mitad')
     if CAVITY==True:
-        plt.semilogx(ratio, o_dw, label='O_DW')
+        plt.semilogx(ratio, o_dw, label='$O_{DW}$')
 
     # Set labels and title
-    plt.xlabel('Ratio (log scale)')
+    plt.xlabel('J/U')
     plt.ylabel('Value')
-    plt.title('Data Plot')
+    plt.title('Calculations for N={}, M={}, Cavity={}'.format(N,M,CAVITY))
 
     # Add legend
     plt.legend()

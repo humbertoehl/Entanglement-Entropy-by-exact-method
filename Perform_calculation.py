@@ -79,7 +79,7 @@ def main():
         S_ent,S_ent2 = calculate_entropy_V2(GS, M, N, ordered_basis, BASIS_DIM, S_ent, S_ent2, diccionario, diccionario2, index_mapping_1, index_mapping_2)
 
     #plotting
-    plot_results(ratio, O_DW, nvariance, nvariance2, n1, n2, N, f, CAVITY, S_ent, S_ent2)
+    plot_results(ratio, O_DW, nvariance, nvariance2, n1, n2, N, M, f, CAVITY, S_ent, S_ent2)
 
     #store results in txt
     write_results_txt("txt_results/results(N={},M={},Cav={})".format(N,M,CAVITY), ratio, nvariance, nvariance2, n1, n2, f, S_ent, S_ent2, O_DW)

@@ -412,7 +412,7 @@ def calculate_entropy(GS, M, N, A, D, S_ent, S_ent2, diccionario, diccionario2):
 
     return S_ent,S_ent2
 
-def plot_results(ratio, O_DW, nvariance, nvariance2, n1, n2, N, f, CAVITY, S_ent, S_ent2):
+def plot_results(ratio, O_DW, nvariance, nvariance2, n1, n2, N, M, f, CAVITY, S_ent, S_ent2):
     plt.figure(figsize=(10, 10))
     if CAVITY:
         plt.plot(ratio, O_DW, 'tab:green', label='$O_{DW}$', marker='.', linestyle='-')
@@ -431,7 +431,7 @@ def plot_results(ratio, O_DW, nvariance, nvariance2, n1, n2, N, f, CAVITY, S_ent
     axes = plt.gca()
     plt.legend(loc = "upper left",fontsize="18")
     #plt.draw()
-    plt.savefig('Plots/RESULTADO{}_CAVITY({}).png'.format(N,CAVITY))
+    plt.savefig('Plots/RESULTADO(N={},M={},CAVITY={}).png'.format(N,M,CAVITY))
 
 def write_results_txt(filename, ratio, nvariance, nvariance2, n1, n2, f, S_ent, S_ent2, O_DW):
     with open('{}.txt'.format(filename), 'w') as file:
