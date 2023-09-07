@@ -305,7 +305,6 @@ def create_diccionaries(M, A, D):
                     if A[j][1] == a4 and A[j][3] == a5 and A[j][5] == a6 and A[j][7] == a7:
                         sublist.append(j)
                 diccionario2.append(sublist)
-    #print(diccionario)
     return diccionario, diccionario2
 
 def create_index_mapping(groups):
@@ -509,6 +508,9 @@ def calculate_entropy_V2(GS, M, N, A, D, S_ent, S_ent2, diccionario, diccionario
                     RHO_trazada[search_index(index_mapping_1, i), search_index(index_mapping_1, j)] += RHO_AB[i][j]
             elif M==8:
                 if A[i][0] == A[j][0] and A[i][1] == A[j][1] and A[i][2]==A[j][2] and A[i][3]==A[j][3]:
+                    RHO_trazada[search_index(index_mapping_1, i), search_index(index_mapping_1, j)] += RHO_AB[i][j]
+            elif M==8:
+                if A[i][0] == A[j][0] and A[i][1] == A[j][1] and A[i][2]==A[j][2] and A[i][3]==A[j][3] and A[i][4]==A[j][4]:
                     RHO_trazada[search_index(index_mapping_1, i), search_index(index_mapping_1, j)] += RHO_AB[i][j]
 
 
