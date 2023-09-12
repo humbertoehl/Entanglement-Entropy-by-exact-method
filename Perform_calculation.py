@@ -60,6 +60,8 @@ def main():
     ratio = []
     CORTE = 40
     step = -2.4
+    if CAVITY==True:
+        step= -1.7
     for i_step in range(0, CORTE):
 
         step += 0.1
@@ -74,7 +76,6 @@ def main():
         # expected values calculation
         nvariance, nvariance2, n1, n2, O_DW = calculate_expected_values(GS, BASIS_DIM, ordered_basis, M, D_sq, nvariance, nvariance2, n1, n2, O_DW)
         f = calculate_condensate_factor(M, BASIS_DIM, ordered_basis, sorted_tags, ind, GS, f, N)
-
         #S_ent,S_ent2 = calculate_entropy(GS,M,N,ordered_basis,BASIS_DIM,S_ent,S_ent2,diccionario, diccionario2)
         S_ent,S_ent2 = calculate_entropy_V2(GS, M, N, ordered_basis, BASIS_DIM, S_ent, S_ent2, diccionario, diccionario2, index_mapping_1, index_mapping_2)
 

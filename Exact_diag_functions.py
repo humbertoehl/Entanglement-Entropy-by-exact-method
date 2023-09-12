@@ -467,7 +467,7 @@ def calculate_entropy_V2(GS, M, N, A, D, S_ent, S_ent2, diccionario, diccionario
             elif M==8:
                 if A[i][0] == A[j][0] and A[i][2] == A[j][2] and A[i][4]==A[j][4] and A[i][6]==A[j][6]:
                     RHO_trazada[search_index(index_mapping_2, i), search_index(index_mapping_2, j)] += RHO_AB[i][j]
-
+    
     RHO_trazada = bsr_matrix(RHO_trazada)
     RHO_eigsh = primme.eigsh(RHO_trazada, k=new_D, which='LM', tol=0)
 

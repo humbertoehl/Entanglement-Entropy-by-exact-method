@@ -29,9 +29,11 @@ def plot_txt_data(file_path):
         plt.semilogx(ratio, o_dw, label='$O_{DW}$')
 
     # Set labels and title
-    plt.xlabel('J/U')
-    plt.ylabel('Value')
-    plt.title('Calculations for N={}, M={}, Cavity={}'.format(N,M,CAVITY))
+    plt.xlabel('J/U',fontsize=20)
+    plt.ylabel('Value',fontsize=20)
+    plt.title('Calculations for N={}, M={}, Cavity={}'.format(N,M,CAVITY),fontsize=20)
+    plt.yticks(fontsize=13)
+    plt.xticks(fontsize=13)
 
     # Add legend
     plt.legend()
