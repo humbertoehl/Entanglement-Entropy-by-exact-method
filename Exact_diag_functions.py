@@ -317,6 +317,7 @@ def create_index_mapping(groups):
 def search_index(index_mapping, element):
     return index_mapping[element]
 
+#previous approach on calculating entropy (non-optimized)
 def calculate_entropy(GS, M, N, A, D, S_ent, S_ent2, diccionario, diccionario2):
 
 
@@ -446,6 +447,7 @@ def write_results_txt(filename, ratio, nvariance, nvariance2, n1, n2, f, S_ent, 
 
     print("\n Data has been written to {}.txt".format(filename))
 
+#New approach on calculating entropy (optimized)
 def calculate_entropy_V2(GS, M, N, A, D, S_ent, S_ent2, diccionario, diccionario2, index_mapping_1, index_mapping_2):
 
 

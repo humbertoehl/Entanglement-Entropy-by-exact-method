@@ -26,7 +26,7 @@ def plot_txt_data(file_path):
     plt.semilogx(ratio, s_ent, label='$S_{ent}$ trazado sobre impares')
     plt.semilogx(ratio, s_ent2, label='$S_{ent}$ trazado sobre primera mitad')
     if CAVITY==True:
-        plt.semilogx(ratio, o_dw, label='$O_{DW}$')
+        plt.semilogx(ratio, np.sqrt(o_dw), label='$O_{DW}$')
 
     # Set labels and title
     plt.xlabel('J/U',fontsize=20)
