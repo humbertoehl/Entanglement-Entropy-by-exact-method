@@ -12,6 +12,10 @@ The extended Bose-Hubbard model is a theoretical model used in condensed matter 
 
 $$S_{ent} = - \text{Tr} [\rho_A \log \rho_A]$$
 
+for two types of partitions
+half-half: $A={0,1,2,...,M/2-1}$, $B={M/2,M/2+1,M/2+2,...,M}$
+even.odd: $A={0,2,4,...}$, $B={1,3,5,...}$
+
 Where:
 - $S_{ent}$ is the entanglement entropy.
 - $\rho_A$ is the reduced density matrix of subsystem A.
