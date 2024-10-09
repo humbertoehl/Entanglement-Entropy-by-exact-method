@@ -2,10 +2,11 @@ from itertools import combinations_with_replacement, permutations
 from scipy.linalg import eigh, kron
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.sparse import dok_matrix, csr_matrix
+from scipy.sparse import dok_matrix, csr_matrix, lil_matrix
 from scipy.sparse.linalg import eigsh
 import time
 from concurrent.futures import ProcessPoolExecutor
+import math as ma
 
 
 
@@ -25,35 +26,61 @@ def generate_fock_basis(N, M):
     return np.array(all_states_sorted)
 
 
-def create_hamiltonian(basis, N, M, t, U, mu):
+def create_hamiltonian(basis, N, M, t, U, mu, g_eff, J_D, J_B):
     dim = len(basis)
-    H = dok_matrix((dim, dim), dtype=np.float64)
+    epsilon = 1e-4
+    H = lil_matrix((dim, dim), dtype=np.float64)
 
-    #hopping term
+    # Hopping and local terms
     state_to_index = {tuple(state): idx for idx, state in enumerate(basis)}
     for v, state_v in enumerate(basis):
         for j in range(M):
             next_site = (j + 1) % M
             prev_site = (j - 1) % M
-
             if state_v[j] > 0:
                 for k in [next_site, prev_site]:
                     new_state = state_v.copy()
                     new_state[j] -= 1
                     new_state[k] += 1
-
                     u = state_to_index.get(tuple(new_state))
                     if u is not None:
-                        matrix_element = -t * np.sqrt(state_v[j] * (new_state[k])) / 2  # /2 to avoid double counting
+                        matrix_element = -t * np.sqrt(state_v[j] * (new_state[k])) / 2
                         H[v, u] += matrix_element
-                        H[u, v] += matrix_element #Hermitian
+                        H[u, v] += matrix_element
 
-        #local terms
         interaction_term = U * sum(n * (n - 1) / 2 for n in state_v)
         chemical_term = mu * sum(state_v)
         H[v, v] += interaction_term + chemical_term
 
-    return csr_matrix(H)
+    # D_- matrix
+    D_matrix = lil_matrix((dim, dim), dtype=np.float64)
+    for u in range(dim):
+        D_value = sum((-1)**i * state for i, state in enumerate(basis[u]))
+        D_matrix[u, u] = D_value
+
+    # B_- matrix
+    B_matrix = lil_matrix((dim, dim), dtype=np.float64)
+    for v in range(dim):
+        for i in range(M):
+            j = (i + 1) % M  # Periodic boundary conditions
+            factor = (-1)**i * np.sqrt((basis[v][i]) * (basis[v][j] + 1) if basis[v][i] > 0 else 0)
+            new_state = basis[v].copy()
+            new_state[i] -= 1
+            new_state[j] += 1
+            u = state_to_index.get(tuple(new_state))
+            if u is not None:
+                B_matrix[v, u] += factor
+                B_matrix[u, v] += factor  # Hermitian conjugate
+
+    B_sq = B_matrix.multiply(B_matrix)
+
+    # Cavity interaction Hamiltonian
+    H_cav = epsilon * D_matrix + (g_eff / M) * (J_D**2 * D_matrix.multiply(D_matrix) + J_B**2 * B_sq + J_D * J_B * (B_matrix * D_matrix + D_matrix * B_matrix))
+    
+    # Combine H_BH and H_cav
+    H += H_cav
+
+    return lil_matrix(H)
 
 
 
@@ -202,6 +229,11 @@ def time_convert(sec):
 def plot_as_functions_of_t(N, M):
     U = 1.0
     mu = 0
+    g_eff = -1
+    J_D = 2
+    J_B = 0
+
+
     start_time = time.time()
     basis = generate_fock_basis(N, M)
     print('Fock basis generated')
@@ -230,7 +262,7 @@ def plot_as_functions_of_t(N, M):
     for t in t_values:
         step += 1
         print('step ',step,'/',maxsteps)
-        H_BH = create_hamiltonian(basis, N, M, t, U, mu)
+        H_BH = create_hamiltonian(basis, N, M, t, U, mu, g_eff, J_D, J_B)
         ground_energy, ground_state = find_ground_state(H_BH)
         expectations, variances, condensate_fraction = calculate_expected_values(basis, ground_state, N=N)
         
@@ -269,8 +301,8 @@ def plot_as_functions_of_t(N, M):
     plt.show()
 
 
-def task_for_parallel_execution(t, basis, N, M, U, mu):
-    H_BH = create_hamiltonian(basis, N, M, t, U, mu)
+def task_for_parallel_execution(t, basis, N, M, U, mu, g_eff, J_D, J_B):
+    H_BH = create_hamiltonian(basis, N, M, t, U, mu, g_eff, J_D, J_B)
     ground_energy, ground_state = find_ground_state(H_BH)
     expectations, variances, condensate_fraction = calculate_expected_values(basis, ground_state, N=N)
 
@@ -281,19 +313,25 @@ def task_for_parallel_execution(t, basis, N, M, U, mu):
     subsystem_Bhh = list(range(M//2, M))
 
     entropy_eo = calculate_entropy(calculate_partial_trace(basis, ground_state, M, subsystem_Aeo, subsystem_Beo))
+    entropy_oe = calculate_entropy(calculate_partial_trace(basis, ground_state, M, subsystem_Beo, subsystem_Aeo))
     entropy_hh1 = calculate_entropy(calculate_partial_trace(basis, ground_state, M, subsystem_Ahh, subsystem_Bhh))
+    entropy_hh2 = calculate_entropy(calculate_partial_trace(basis, ground_state, M, subsystem_Bhh, subsystem_Ahh))
 
-    print(t)
+    print('step donde out of', 30)
 
-    return expectations[0], variances[0], condensate_fraction, entropy_eo.real, entropy_hh1.real
+    return expectations[0], variances[0], condensate_fraction, entropy_eo.real, entropy_hh1.real, entropy_oe.real, entropy_hh2.real
 
 def parallelized_plot_as_functions_of_t(N, M):
     U = 1.0
     mu = 0
+    g_eff = -1
+    J_D = .25
+    J_B = .25
+
     start_time = time.time()
     basis = generate_fock_basis(N, M)
-    maxsteps = 2
-    t_values = np.logspace(-2.5, 2.5, num=maxsteps)
+    maxsteps = 30
+    t_values = np.logspace(-3.5, 2.5, num=maxsteps)
 
     subsystem_Aeo = [i for i in range(M) if i % 2 == 0]
     subsystem_Beo = [i for i in range(M) if i % 2 != 0]
@@ -306,9 +344,9 @@ def parallelized_plot_as_functions_of_t(N, M):
     print('subsystem B (half-half):',list(subsystem_Bhh))
 
     with ProcessPoolExecutor() as executor:
-        results = list(executor.map(task_for_parallel_execution, t_values, [basis]*len(t_values), [N]*len(t_values), [M]*len(t_values), [U]*len(t_values), [mu]*len(t_values)))
+        results = list(executor.map(task_for_parallel_execution, t_values, [basis]*len(t_values), [N]*len(t_values), [M]*len(t_values), [U]*len(t_values), [mu]*len(t_values), [g_eff]*len(t_values), [J_D]*len(t_values), [J_B]*len(t_values)))
 
-    expectation_0, variance_0, condensate_fractions, entropies_eo, entropies_hh1 = zip(*results)
+    expectation_0, variance_0, condensate_fractions, entropies_eo, entropies_hh1, entropies_oe, entropies_hh2 = zip(*results)
 
     end_time = time.time()
     time_lapsed = end_time - start_time
@@ -321,6 +359,8 @@ def parallelized_plot_as_functions_of_t(N, M):
     plt.plot(t_values, condensate_fractions, label='Condensate Fraction')
     plt.plot(t_values, entropies_eo, label='Entropy Even-Odd', marker='s')
     plt.plot(t_values, entropies_hh1, label='Entropy Half-Half', marker='o')
+    plt.plot(t_values, entropies_oe, label='Entropy Even-Odd', marker='s')
+    plt.plot(t_values, entropies_hh2, label='Entropy Half-Half', marker='o')
     plt.xscale('log')
     plt.xlabel('t/U')
     plt.ylabel('Parameters')
@@ -335,3 +375,4 @@ N = int(input('Number of particles: '))
 #plot_as_functions_of_t(M,N)
 
 parallelized_plot_as_functions_of_t(N, M)
+
