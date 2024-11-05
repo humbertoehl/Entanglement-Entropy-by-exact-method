@@ -28,7 +28,7 @@ def generate_fock_basis(N, M):
 
 def create_hamiltonian(basis, N, M, t, U, mu, g_eff, J_D, J_B):
     dim = len(basis)
-    epsilon = 1e-4
+    epsilon = 1e-8
     H = lil_matrix((dim, dim), dtype=np.float64)
 
     # Hopping and local terms
@@ -99,15 +99,27 @@ def find_ground_state(H):
     return ground_state_energy, ground_state_vector
 
 
-def calculate_expected_values(basis, state, site_indices=[0], N=None):
-    
-    # Condensate factor calculation
+def calculate_expected_values(basis, state, M, N=None):
     if N is None:
         N = np.sum(basis[0])
+    
     expectations = []
     variances = []
-    M = basis.shape[1] 
+    condensate_fraction = 0
+    B_sq_value = 0
+    D_sq_value = 0
 
+    # Occupation and variance calculations
+    for site in range(M):
+        n_i = basis[:, site]
+        expectation_n_i = np.dot(n_i, np.abs(state)**2)
+        n_i_squared = n_i**2
+        expectation_n_i_squared = np.dot(n_i_squared, np.abs(state)**2)
+        
+        expectations.append(expectation_n_i)
+        variances.append(np.sqrt(expectation_n_i_squared - expectation_n_i**2))
+
+    # Condensate Fraction Calculation (OBDM)
     OBDM = np.zeros((M, M), dtype=np.complex128)
     for i in range(M):
         for j in range(M):
@@ -124,27 +136,27 @@ def calculate_expected_values(basis, state, site_indices=[0], N=None):
                         if len(u) > 0:
                             u = u[0]
                             OBDM[i, j] += np.conj(state[u]) * state[v] * np.sqrt(state_v[i] * (state_v[j] + 1))
-
     eigenvalues = eigh(OBDM, eigvals_only=True)
     n_max = np.max(eigenvalues)
     condensate_fraction = n_max / N
 
-    #occupation and variance calculation
-    for site in site_indices:
-        site_index = site
+    # Bond order parameter \( O_B \)
+    for v, state_v in enumerate(basis):
+        for i in range(M):
+            j = (i + 1) % M
+            factor = (-1)**i * np.sqrt((state_v[i]) * (state_v[j] + 1) if state_v[i] > 0 else 0)
+            B_sq_value += np.abs(factor * state[v])**2
 
-        n_i = basis[:, site_index]
-        expectation_n_i = np.dot(n_i, np.abs(state)**2)
+    # Density wave order parameter \( O_{DW} \)
+    for v, state_v in enumerate(basis):
+        sum_D = sum((-1)**i * state for i, state in enumerate(state_v))
+        D_sq_value += (np.abs(sum_D * state[v]))**2
 
-        n_i_squared = n_i**2
-        expectation_n_i_squared = np.dot(n_i_squared, np.abs(state)**2)
+    bond_order_parameter = np.sqrt(B_sq_value / M**2)
+    density_wave_order_parameter = np.sqrt(D_sq_value / M**2)
 
-        expectations.append(expectation_n_i)
+    return expectations, variances, condensate_fraction, bond_order_parameter, density_wave_order_parameter
 
-        variance_n_i = np.sqrt(expectation_n_i_squared - expectation_n_i**2)
-        variances.append(variance_n_i)
-
-    return expectations, variances, condensate_fraction
 
 def calculate_reduced_density_matrix(basis, ground_state, M, subsystem_A, subsystem_B):
 
@@ -304,9 +316,8 @@ def plot_as_functions_of_t(N, M):
 def task_for_parallel_execution(t, basis, N, M, U, mu, g_eff, J_D, J_B):
     H_BH = create_hamiltonian(basis, N, M, t, U, mu, g_eff, J_D, J_B)
     ground_energy, ground_state = find_ground_state(H_BH)
-    expectations, variances, condensate_fraction = calculate_expected_values(basis, ground_state, N=N)
+    expectations, variances, condensate_fraction, bond_order_parameter, density_wave_order_parameter = calculate_expected_values(basis, ground_state, M, N=N)
 
-    # Calculate entropies
     subsystem_Aeo = [i for i in range(M) if i % 2 == 0]
     subsystem_Beo = [i for i in range(M) if i % 2 != 0]
     subsystem_Ahh = list(range(M//2))
@@ -317,62 +328,48 @@ def task_for_parallel_execution(t, basis, N, M, U, mu, g_eff, J_D, J_B):
     entropy_hh1 = calculate_entropy(calculate_partial_trace(basis, ground_state, M, subsystem_Ahh, subsystem_Bhh))
     entropy_hh2 = calculate_entropy(calculate_partial_trace(basis, ground_state, M, subsystem_Bhh, subsystem_Ahh))
 
-    print('step donde out of', 30)
+    return expectations[0], variances[0], condensate_fraction, entropy_eo.real, entropy_hh1.real, entropy_oe.real, entropy_hh2.real, bond_order_parameter, density_wave_order_parameter
 
-    return expectations[0], variances[0], condensate_fraction, entropy_eo.real, entropy_hh1.real, entropy_oe.real, entropy_hh2.real
 
-def parallelized_plot_as_functions_of_t(N, M):
+def parallelized_plot_as_functions_of_t(N, M, g_eff, J_B, J_D):
     U = 1.0
     mu = 0
-    g_eff = -1
-    J_D = .25
-    J_B = .25
 
-    start_time = time.time()
     basis = generate_fock_basis(N, M)
     maxsteps = 30
     t_values = np.logspace(-3.5, 2.5, num=maxsteps)
 
-    subsystem_Aeo = [i for i in range(M) if i % 2 == 0]
-    subsystem_Beo = [i for i in range(M) if i % 2 != 0]
-    subsystem_Ahh = range(M//2) 
-    subsystem_Bhh = range(M//2, M)
-
-    print('subsystem A (even-odd):',subsystem_Aeo)
-    print('subsystem B (even-odd):',subsystem_Beo)
-    print('subsystem A (half-half):',list(subsystem_Ahh))
-    print('subsystem B (half-half):',list(subsystem_Bhh))
-
     with ProcessPoolExecutor() as executor:
         results = list(executor.map(task_for_parallel_execution, t_values, [basis]*len(t_values), [N]*len(t_values), [M]*len(t_values), [U]*len(t_values), [mu]*len(t_values), [g_eff]*len(t_values), [J_D]*len(t_values), [J_B]*len(t_values)))
 
-    expectation_0, variance_0, condensate_fractions, entropies_eo, entropies_hh1, entropies_oe, entropies_hh2 = zip(*results)
-
-    end_time = time.time()
-    time_lapsed = end_time - start_time
-    time_convert(time_lapsed)
+    expectation_0, variance_0, condensate_fractions, entropies_eo, entropies_hh1, entropies_oe, entropies_hh2, bond_order_parameters, density_wave_order_parameters = zip(*results)
 
     # Plotting
-    plt.figure(figsize=(12, 8))
-    plt.plot(t_values, expectation_0, label='Expectation <n_0>')
-    plt.plot(t_values, variance_0, label='Variance of n_0')
-    plt.plot(t_values, condensate_fractions, label='Condensate Fraction')
-    plt.plot(t_values, entropies_eo, label='Entropy Even-Odd', marker='s')
-    plt.plot(t_values, entropies_hh1, label='Entropy Half-Half', marker='o')
-    plt.plot(t_values, entropies_oe, label='Entropy Even-Odd', marker='s')
-    plt.plot(t_values, entropies_hh2, label='Entropy Half-Half', marker='o')
+    plt.figure(figsize=(8, 6))
+    plt.plot(t_values, expectation_0, label=r'$<n_0>$')
+    plt.plot(t_values, variance_0, label=r'$\Delta n_0$', color='red')
+    plt.plot(t_values, condensate_fractions, label=r'$f_c$', color='orange')
+    plt.plot(t_values, entropies_eo, label=r'Entropy $S_{even-odd}$', marker='s', color='magenta')
+    plt.plot(t_values, entropies_hh1, label=r'Entropy $S_{half-half}$', marker='o', color='darkmagenta')
+    plt.plot(t_values, bond_order_parameters, label=r'$O_B$', linestyle='--', color='green')
+    plt.plot(t_values, density_wave_order_parameters, label=r'$O_{DW}$', linestyle='--', color='blue')
     plt.xscale('log')
     plt.xlabel('t/U')
     plt.ylabel('Parameters')
+    plt.ylim(bottom=0)
     plt.title('Order parameters for Bose-Hubbard model')
     plt.legend()
     plt.tight_layout()
     plt.show()
 
 
+
 M = int(input('Number of sites: '))
 N = int(input('Number of particles: '))
+g_eff = int(input('sign of cavity interaction (+-1): '))
+J_B = float(input('Bond interaction amplitude (J_B): '))
+J_D = float(input('Density Wave interaction amplitude (J_D): '))
+
 #plot_as_functions_of_t(M,N)
 
-parallelized_plot_as_functions_of_t(N, M)
-
+parallelized_plot_as_functions_of_t(N, M, g_eff, J_B, J_D)
